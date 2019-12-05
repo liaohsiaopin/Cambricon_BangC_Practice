@@ -1,0 +1,52 @@
+#include "mlu.h"
+#define INPUT_SIZE 20
+#define INPUT_NUM  256
+
+__mlu_entry__ void SoftmaxKernel(half* input, half* output)
+{
+	__nram__ half input_nram[INPUT_NUM];
+	__nram__ half temp_nram[INPUT_NUM];
+	__nram__ half sum_nram[INPUT_NUM];
+	__nram__ half max_nram[INPUT_NUM];
+	__nram__ half res_nram[INPUT_NUM];
+
+	__nramset_half(sum_nram, INPUT_NUM, 0.0);
+	__nramset_half(res_nram, INPUT_NUM, 0.0);
+
+	// find max
+	for(int32_t i = 0; i < INPUT_SIZE; i++)
+	{
+		__memcpy(input_nram , input + i * INPUT_NUM, INPUT_NUM * sizeof(half), GDRAM2NRAM);
+		for(int32_t j = 0; j < INPUT_NUM; j++)
+		{
+			if(max_nram[j]<input_nram[j])
+				max_nram[j]=input_nram[j];
+		}
+	}
+
+	// sum(exp(xi-max))
+	for(int32_t i = 0; i < INPUT_SIZE; i++)
+	{
+		__memcpy(input_nram , input + i * INPUT_NUM, INPUT_NUM * sizeof(half), GDRAM2NRAM);
+		__bang_sub(input_nram, input_nram, max_nram, INPUT_NUM); // xi-max
+		__bang_active_exp(temp_nram, input_nram, INPUT_NUM); //exp(xi-max)
+		__bang_add(sum_nram, temp_nram, sum_nram, INPUT_NUM); // sum+=exp(xi-max)
+	}
+
+	__bang_active_recip(sum_nram, sum_nram, INPUT_NUM); //sum=1/sum
+
+		for(int32_t i = 0; i < INPUT_SIZE; i++)
+	{
+		__memcpy(input_nram , input + i * INPUT_NUM, INPUT_NUM * sizeof(half), GDRAM2NRAM);
+
+		__bang_sub(input_nram, input_nram, max_nram, INPUT_NUM); // xi-max
+		__bang_active_exp(temp_nram, input_nram, INPUT_NUM); //exp(xi-max)	
+		__bang_mul(res_nram, sum_nram, temp_nram, INPUT_NUM); 
+
+		__memcpy(output + i * INPUT_NUM, res_nram, INPUT_NUM * sizeof(half), NRAM2GDRAM);
+
+	}
+
+
+}
+

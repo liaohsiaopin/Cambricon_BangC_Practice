@@ -1,0 +1,47 @@
+#include "mlu.h"
+#include "marco.h"
+#define EPS 0.0001
+#define ITER_NUM 20
+#define PRINT_DEBUG 0
+
+#define ONELINE 64
+#define PJLEN 32768
+
+__mlu_entry__ void PowerXYKernel(half* inputX, half* inputY, half* output) {
+    __nram__ int32_t quotient = PJLEN / ONELINE;
+    __nram__ int32_t rem = PJLEN % ONELINE;
+
+    __nram__ half inputX_nram[ONELINE];
+    __nram__ half inputY_nram[ONELINE];
+
+    __nram__ half temp1_nram[ONELINE];
+    __nram__ half temp2_nram[ONELINE];
+    __nram__ half const_nram[ONELINE];
+
+    __nramset_half(const_nram, ONELINE, 1);
+    __nramset_half(temp2_nram, ONELINE, 0.0);
+
+    if (rem != 0) {
+        quotient +=1;
+    }
+
+    // calculate ln(inputX)
+    for (int32_t i = 0; i < quotient; i++) {
+        __memcpy(inputX_nram, inputX + i * ONELINE, ONELINE * sizeof(half), GDRAM2NRAM);
+        __memcpy(inputY_nram, inputY + i * ONELINE, ONELINE * sizeof(half), GDRAM2NRAM);
+        __nramset_half(temp1_nram, ONELINE, 7.0); //t0=0
+
+        for (int32_t j = 1; j <= ITER_NUM;j++) {
+            __bang_mul_const(temp2_nram, temp1_nram, -1.0, ONELINE);  // -tn
+            __bang_active_exp(temp2_nram, temp2_nram, ONELINE);       // exp(-tn)
+            __bang_mul(temp2_nram, inputX_nram, temp2_nram, ONELINE);  // x*exp(-tn)
+            __bang_add(temp1_nram, temp1_nram, temp2_nram, ONELINE);  // tn + x*exp(-tn)
+            __bang_sub(temp1_nram, temp1_nram, const_nram, ONELINE);  // tn + x*exp(-tn) -1
+        }
+
+        __bang_mul(temp1_nram, temp1_nram, inputY_nram, ONELINE);            // term = inputY * ln(inputX)
+        __bang_active_exp(temp1_nram, temp1_nram, ONELINE);               // result = exp(term)
+
+        __memcpy(output +i * ONELINE, temp1_nram, ONELINE * sizeof(half), NRAM2GDRAM);
+    }
+}

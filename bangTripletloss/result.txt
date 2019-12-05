@@ -1,0 +1,33 @@
+M: 128
+N: 256
+LEN: 32768
++++++++++++++++++test1++++++++++++++++++++CNRT: 3.12.0 7bfac76
+Hardware Total Time: 0.140 ms
+Total error:0.000000, MAE:0.000000
+err rate = 0.0000%
+
++++++++++++++++++test2++++++++++++++++++++CNRT: 3.12.0 7bfac76
+Hardware Total Time: 0.138 ms
+Total error:0.000000, MAE:0.000000
+err rate = 0.0000%
+
++++++++++++++++++test3++++++++++++++++++++CNRT: 3.12.0 7bfac76
+Hardware Total Time: 0.137 ms
+Total error:0.000000, MAE:0.000000
+err rate = 0.0000%
+
++++++++++++++++++test4++++++++++++++++++++CNRT: 3.12.0 7bfac76
+Hardware Total Time: 0.137 ms
+Total error:0.000000, MAE:0.000000
+err rate = 0.0000%
+
++++++++++++++++++test5++++++++++++++++++++CNRT: 3.12.0 7bfac76
+Hardware Total Time: 0.140 ms
+Total error:0.000000, MAE:0.000000
+err rate = 0.0000%
+
++++++++++++++++++test6++++++++++++++++++++CNRT: 3.12.0 7bfac76
+Hardware Total Time: 0.140 ms
+Total error:2.493822, MAE:0.000076
+err rate = 1.0474%
+

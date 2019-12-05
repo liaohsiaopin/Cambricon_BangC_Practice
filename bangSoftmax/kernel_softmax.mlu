@@ -1,0 +1,48 @@
+#include "mlu.h"
+#define INPUT_SIZE 20
+#define INPUT_NUM  256
+
+
+#define LEN  256*20
+__mlu_entry__ void SoftmaxKernel(half* input, half* output)
+{  
+   __nram__ half input_nram[INPUT_NUM];
+   __nram__ half output_nram[LEN];
+   __nram__ half temp1_nram[INPUT_NUM];
+   __nram__ half temp2_nram[INPUT_NUM];
+   __nram__ half comL_nram[INPUT_NUM];
+   __nram__ half sum_nram[INPUT_NUM];
+   __nram__ half sum_recip_nram[INPUT_NUM];
+   __nram__ half mulL_nram[INPUT_NUM];
+   __nram__ half mulR_nram[INPUT_NUM];
+   __nramset_half(comL_nram, INPUT_NUM, -3000.0);
+   __nramset_half(sum_nram, INPUT_NUM,0.0);
+   
+   for(int32_t i=0; i<INPUT_SIZE;i++)
+    {
+       __memcpy(input_nram, input+i*INPUT_NUM, INPUT_NUM*sizeof(half),GDRAM2NRAM); 
+       __bang_gt(temp1_nram,comL_nram,input_nram,INPUT_NUM);
+       __bang_not(temp2_nram,temp1_nram,INPUT_NUM);
+       __bang_mul(mulL_nram,temp1_nram,comL_nram,INPUT_NUM);
+       __bang_mul(mulR_nram,temp2_nram,input_nram,INPUT_NUM);
+       __bang_add(comL_nram,mulL_nram,mulR_nram,INPUT_NUM);
+    }
+
+   for(int32_t i=0; i<INPUT_SIZE;i++)
+     {
+       __memcpy(input_nram, input+i*INPUT_NUM, INPUT_NUM*sizeof(half),GDRAM2NRAM);
+       __bang_sub(temp1_nram,input_nram,comL_nram,INPUT_NUM);
+       __bang_active_exp(temp2_nram,temp1_nram,INPUT_NUM);
+       __bang_add(sum_nram,sum_nram,temp2_nram,INPUT_NUM);
+     }
+    __bang_active_recip(sum_recip_nram,sum_nram,INPUT_NUM);
+
+   for(int32_t i=0; i<INPUT_SIZE;i++)
+       {
+         __memcpy(input_nram, input+i*INPUT_NUM, INPUT_NUM*sizeof(half),GDRAM2NRAM);
+        __bang_sub(temp1_nram,input_nram,comL_nram,INPUT_NUM);
+        __bang_active_exp(temp2_nram,temp1_nram,INPUT_NUM);
+        __bang_mul(temp2_nram,temp2_nram,sum_recip_nram,INPUT_NUM);
+        __memcpy(output+i*INPUT_NUM,temp2_nram,INPUT_NUM*sizeof(half),NRAM2GDRAM);
+      }
+ }    
